@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRS SEO/GEO — Round 1 Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+         background: #0f1116; color: #e5e7eb; line-height: 1.5; padding: 20px; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  header { border-bottom: 1px solid #374151; padding-bottom: 16px; margin-bottom: 24px; }
+  h1 { font-size: 26px; color: #fff; }
+  h2 { font-size: 20px; color: #fff; margin: 32px 0 12px; border-left: 4px solid #3b82f6; padding-left: 12px; }
+  h3 { font-size: 16px; color: #d1d5db; margin: 16px 0 8px; }
+  .subtitle { color: #9ca3af; font-size: 14px; margin-top: 6px; }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+  .card { background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 16px; }
+  .metric { font-size: 28px; font-weight: 700; color: #fff; }
+  .metric-label { font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .metric-delta { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .tier { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .tier-strong { background: #065f46; color: #6ee7b7; }
+  .tier-competitive { background: #1e40af; color: #93c5fd; }
+  .tier-vulnerable { background: #92400e; color: #fcd34d; }
+  .tier-thin { background: #991b1b; color: #fca5a5; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  th { background: #111827; text-align: left; padding: 10px 12px; font-weight: 600; color: #d1d5db; border-bottom: 1px solid #374151; }
+  td { padding: 10px 12px; border-bottom: 1px solid #374151; vertical-align: top; }
+  tr:hover { background: #263244; }
+  .owner-srs { color: #6ee7b7; font-weight: 600; }
+  .owner-mqp { color: #fca5a5; font-weight: 600; }
+  .chart-wrap { position: relative; height: 280px; }
+  .chart-wrap-tall { position: relative; height: 360px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #374151; color: #d1d5db; margin-right: 4px; }
+  .crit { background: #991b1b; color: #fff; }
+  .action-list { list-style: none; padding: 0; }
+  .action-list li { padding: 10px 12px; background: #111827; border-left: 3px solid #3b82f6; margin-bottom: 8px; border-radius: 4px; font-size: 13px; }
+  .action-list .impact-high { border-left-color: #ef4444; }
+  .action-list .impact-med { border-left-color: #f59e0b; }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .source-status { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .status-live { background: #065f46; color: #6ee7b7; }
+  .status-burned { background: #991b1b; color: #fca5a5; }
+  .status-pending { background: #78350f; color: #fcd34d; }
+  .note { font-size: 12px; color: #9ca3af; margin-top: 6px; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Sam's Roadside Service — SEO/GEO Round 1 Dashboard</h1>
+  <div class="subtitle" id="subtitle">Loading…</div>
+</header>
+
+<!-- TOP-LEVEL METRICS -->
+<div class="grid grid-4">
+  <div class="card"><div class="metric-label">SRS avg rubric score</div><div class="metric" id="srs-avg">—</div><div class="metric-delta" id="srs-avg-delta">Against MQP baseline</div></div>
+  <div class="card"><div class="metric-label">MQP avg rubric score</div><div class="metric" id="mqp-avg">—</div><div class="metric-delta" id="mqp-avg-delta">Competitor benchmark</div></div>
+  <div class="card"><div class="metric-label">Score gap</div><div class="metric" id="gap">—</div><div class="metric-delta">Points SRS is behind</div></div>
+  <div class="card"><div class="metric-label">Pages audited</div><div class="metric" id="page-count">—</div><div class="metric-delta" id="round-label">Round 1 — Tire + Battery × Indy/Carmel/Fishers</div></div>
+</div>
+
+<!-- DATA SOURCE STATUS -->
+<h2>Data sources</h2>
+<div class="grid grid-4" id="data-sources"></div>
+
+<!-- RUBRIC SCORES PER PAGE -->
+<h2>Landing page rubric scores</h2>
+<div class="card">
+  <div class="chart-wrap-tall"><canvas id="scores-chart"></canvas></div>
+</div>
+
+<!-- PAGE DETAIL TABLE -->
+<h2>Page-by-page breakdown</h2>
+<div class="card">
+  <table id="pages-table">
+    <thead>
+      <tr>
+        <th>Page</th><th>Owner</th><th>Targets</th><th>Total</th><th>Tier</th><th>Top gap</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- CATEGORY RADAR -->
+<h2>Category comparison — SRS avg vs MQP avg</h2>
+<div class="card">
+  <div class="chart-wrap-tall"><canvas id="radar-chart"></canvas></div>
+</div>
+
+<!-- GSC INSIGHTS -->
+<h2>GSC insights (last 90 days, SRS site)</h2>
+<div class="card">
+  <table id="gsc-table">
+    <thead>
+      <tr><th>Query</th><th>Impressions</th><th>Clicks</th><th>Avg position</th><th>Note</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- KEYWORDS -->
+<h2>Round 1 keyword tracking</h2>
+<div class="card">
+  <table id="keywords-table">
+    <thead>
+      <tr><th>Keyword</th><th>Priority</th><th>SRS page</th><th>MQP page</th><th>Semrush (partial)</th><th>GSC variants</th><th>Opportunity</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- GAPS SUMMARY -->
+<h2>SRS vs MQP — strengths & gaps</h2>
+<div class="grid grid-2">
+  <div class="card">
+    <h3 style="color:#6ee7b7">SRS strengths vs MQP</h3>
+    <ul id="srs-strengths" class="action-list"></ul>
+  </div>
+  <div class="card">
+    <h3 style="color:#fca5a5">SRS gaps vs MQP</h3>
+    <ul id="srs-gaps" class="action-list"></ul>
+  </div>
+</div>
+
+<!-- WEEK 2 ACTIONS -->
+<h2>Week 2 top actions</h2>
+<div class="card">
+  <ol id="actions-list" class="action-list"></ol>
+</div>
+
+<footer style="margin-top:40px;padding-top:16px;border-top:1px solid #374151;color:#9ca3af;font-size:12px;text-align:center">
+  Rubric: <a href="https://github.com/samsroadsideservice-pixel/seo-geo-command/blob/main/docs/landing-page-rubric-2026-q2.md">landing-page-rubric-2026-q2.md</a> — weekly refresh runbook in private repo.
+</footer>
+
+</div>
+
+<script>
+// Load baseline JSON and render dashboard
+fetch('data/round-1-baseline.json')
+  .then(r => r.json())
+  .then(render)
+  .catch(e => { document.body.innerHTML = '<h1>Failed to load baseline</h1><pre>' + e.message + '</pre>'; });
+
+function tierClass(tier) {
+  if (!tier) return 'tier-thin';
+  if (tier.includes('strong')) return 'tier-strong';
+  if (tier.includes('competitive')) return 'tier-competitive';
+  if (tier.includes('vulnerable')) return 'tier-vulnerable';
+  return 'tier-thin';
+}
+
+function render(d) {
+  document.getElementById('subtitle').textContent =
+    `Generated ${new Date(d.generated_at).toLocaleString()} — Rubric v${d.rubric_version}`;
+
+  const cs = d.comparison_summary;
+  document.getElementById('srs-avg').textContent = cs.srs_avg_score.toFixed(1);
+  document.getElementById('mqp-avg').textContent = cs.mqp_avg_score.toFixed(1);
+  document.getElementById('gap').textContent = '-' + cs.score_gap.toFixed(1);
+  document.getElementById('page-count').textContent = d.page_audits.length;
+
+  // Data sources
+  const srcEl = document.getElementById('data-sources');
+  for (const [name, src] of Object.entries(d.data_sources)) {
+    const statusClass = src.status === 'live' ? 'status-live'
+      : src.status === 'burned' ? 'status-burned' : 'status-pending';
+    srcEl.innerHTML += `
+      <div class="card">
+        <div class="metric-label">${name}</div>
+        <div><span class="source-status ${statusClass}">${src.status}</span></div>
+        <div class="note">${src.note || ''}</div>
+      </div>`;
+  }
+
+  // Scores bar chart
+  const pages = d.page_audits;
+  const labels = pages.map(p => p.page_id);
+  const totals = pages.map(p => p.total_score);
+  const colors = pages.map(p => p.owner === 'SRS' ? '#6ee7b7' : '#fca5a5');
+  new Chart(document.getElementById('scores-chart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Rubric score (0-100)', data: totals, backgroundColor: colors }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, max: 100, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+        x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
+      },
+      plugins: { legend: { labels: { color: '#e5e7eb' } } }
+    }
+  });
+
+  // Pages table
+  const tbody = document.querySelector('#pages-table tbody');
+  for (const p of pages) {
+    const cls = tierClass(p.tier);
+    const ownerClass = p.owner === 'SRS' ? 'owner-srs' : 'owner-mqp';
+    const topGap = (p.top_gaps && p.top_gaps[0]) || '—';
+    const crit = p.critical_flag ? `<span class="pill crit">${p.critical_flag}</span>` : '';
+    tbody.innerHTML += `
+      <tr>
+        <td><a href="${p.url}" target="_blank">${p.page_id}</a>${crit ? '<br>'+crit : ''}</td>
+        <td class="${ownerClass}">${p.owner}</td>
+        <td>${p.targets_keyword}</td>
+        <td><strong>${p.total_score}</strong>/100</td>
+        <td><span class="tier ${cls}">${p.tier || '—'}</span></td>
+        <td style="max-width:300px">${topGap}</td>
+      </tr>`;
+  }
+
+  // Radar: category averages
+  const cats = ['technical_seo', 'content_eeat', 'local_relevance', 'conversion', 'ad_landing_match'];
+  const catLabels = ['Technical SEO', 'Content + E-E-A-T', 'Local Relevance', 'Conversion', 'Ad-Landing Match'];
+  const catMax = { technical_seo: 20, content_eeat: 25, local_relevance: 15, conversion: 25, ad_landing_match: 15 };
+  const srsPages = pages.filter(p => p.owner === 'SRS');
+  const mqpPages = pages.filter(p => p.owner === 'MQP');
+  const srsCat = cats.map(c => {
+    const total = srsPages.reduce((acc, p) => acc + (p.rubric_scores[c]?.score || 0), 0);
+    return (total / srsPages.length / catMax[c] * 100).toFixed(1);
+  });
+  const mqpCat = cats.map(c => {
+    const total = mqpPages.reduce((acc, p) => acc + (p.rubric_scores[c]?.score || 0), 0);
+    return (total / mqpPages.length / catMax[c] * 100).toFixed(1);
+  });
+  new Chart(document.getElementById('radar-chart'), {
+    type: 'radar',
+    data: {
+      labels: catLabels,
+      datasets: [
+        { label: 'SRS avg %', data: srsCat, backgroundColor: 'rgba(110,231,183,0.2)', borderColor: '#6ee7b7', borderWidth: 2 },
+        { label: 'MQP avg %', data: mqpCat, backgroundColor: 'rgba(252,165,165,0.2)', borderColor: '#fca5a5', borderWidth: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { beginAtZero: true, max: 100, ticks: { color: '#9ca3af' }, grid: { color: '#374151' }, pointLabels: { color: '#d1d5db' } } },
+      plugins: { legend: { labels: { color: '#e5e7eb' } } }
+    }
+  });
+
+  // GSC table
+  const gscBody = document.querySelector('#gsc-table tbody');
+  for (const g of d.bonus_gsc_insights) {
+    gscBody.innerHTML += `
+      <tr>
+        <td>${g.kw}</td>
+        <td>${g.impressions_90d.toLocaleString()}</td>
+        <td>${g.clicks_90d}</td>
+        <td>${g.avg_position.toFixed(1)}</td>
+        <td style="max-width:400px">${g.note}</td>
+      </tr>`;
+  }
+
+  // Keywords table
+  const kwBody = document.querySelector('#keywords-table tbody');
+  for (const k of d.keywords) {
+    const sem = k.semrush_partial;
+    const semStr = sem?.volume
+      ? `vol ${sem.volume}, SRS #${sem.srs_position ?? 'NR'}, MQP #${sem.mqp_position ?? 'NR'}`
+      : (sem?.not_tracked_in_semrush_us_db ? '<span style="color:#9ca3af">not in Semrush DB</span>' : (sem?.alt_kw ? `alt "${sem.alt_kw}" vol ${sem.alt_volume}` : '—'));
+    const gscStr = (k.variants_tracked_in_gsc || []).map(v =>
+      `<div style="margin:2px 0"><code>${v.kw}</code> — ${v.impressions_90d} imp, #${v.avg_position.toFixed(1)}</div>`).join('') || '<span style="color:#9ca3af">—</span>';
+    kwBody.innerHTML += `
+      <tr>
+        <td><strong>${k.primary_keyword}</strong></td>
+        <td><span class="pill">${k.priority}</span></td>
+        <td style="max-width:250px;font-size:11px"><a href="${k.srs_landing_page}" target="_blank">${k.srs_landing_page.replace(/https?:\/\/(www\.)?/,'')}</a></td>
+        <td style="max-width:250px;font-size:11px"><a href="${k.mqp_landing_page}" target="_blank">${k.mqp_landing_page.replace(/https?:\/\/(www\.)?/,'')}</a></td>
+        <td>${semStr}</td>
+        <td style="max-width:250px">${gscStr}</td>
+        <td style="max-width:400px">${k.opportunity}</td>
+      </tr>`;
+  }
+
+  // Strengths & gaps
+  const strengthsEl = document.getElementById('srs-strengths');
+  for (const s of cs.srs_strengths_vs_mqp) strengthsEl.innerHTML += `<li>${s}</li>`;
+  const gapsEl = document.getElementById('srs-gaps');
+  for (const g of cs.srs_gaps_vs_mqp) gapsEl.innerHTML += `<li>${g}</li>`;
+
+  // Actions
+  const actEl = document.getElementById('actions-list');
+  for (const a of d.top_actions_for_week_2) {
+    const impCls = a.impact.includes('high') ? 'impact-high' : 'impact-med';
+    actEl.innerHTML += `<li class="${impCls}"><strong>${a.action}</strong><br>
+      <span class="pill">${a.owner}</span> <span class="pill">${a.effort}</span> <span class="pill">impact: ${a.impact}</span></li>`;
+  }
+}
+</script>
+</body>
+</html>
